@@ -1,6 +1,6 @@
 import streamlit as st
 
-# st.write("Hello, *World!* :sunglasses:")
+st.write("Hello, *World!* :sunglasses:")
 
 st.set_page_config(
     page_title="Ex-stream-ly Cool App",
