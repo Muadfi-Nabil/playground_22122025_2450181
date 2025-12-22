@@ -21,7 +21,7 @@ if "data" not in st.session_state:
 # Login Page
 if not st.session_state.authenticated:
     st.title("🔐 Login Page")
-    st.subheader("Please Input Username & Password", divider=True)
+    st.subheader("Please Input Username & Password 🙄", divider=True)
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
