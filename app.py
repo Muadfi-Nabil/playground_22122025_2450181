@@ -1,107 +1,86 @@
-# app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-from datetime import datetime
+import numpy as np
+import matplotlib.pyplot as plt
 
-# Dummy user data (untuk simulasi login)
-USERS = {
-    "admin": "admin123",
-    "user1": "password1",
-    "nabil": "nblll123"
-}
+st.set_page_config(page_title="Bioassay Analyzer", layout="centered")
 
-# Konfigurasi halaman
-st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
+st.title("🧪 Bioassay Data Analyzer")
+st.write("IC50 | EC50 | LC50 | Total Phenolic Content")
 
-# Inisialisasi session_state
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "username" not in st.session_state:
-    st.session_state.username = None
-if "data" not in st.session_state:
-    st.session_state.data = None
-
-# Login Page
-if not st.session_state.authenticated:
-    st.title("🔐 Login Page")
-    st.subheader("Please Input Username & Password 🙄", divider=True)
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if USERS.get(username) == password:
-            st.session_state.authenticated = True
-            st.session_state.username = username
-            st.success("Login successful!")
-            st.rerun()
-        else:
-            st.error("Invalid username or password")
-    st.stop()
-
-# Sidebar Navigation
-page = st.sidebar.selectbox(
-    "📄 Go to Page",
-    ("Dashboard", "Upload Data", "Finance Chatbot", "Settings")
+menu = st.sidebar.selectbox(
+    "Pilih Analisis",
+    ["IC50 / EC50 / LC50", "Total Phenolic Content"]
 )
 
-# Sample chatbot reply
-def finance_bot(question, df):
-    if df is None:
-        return "Please upload your data first."
-    if "pengeluaran terbesar" in question.lower():
-        max_row = df.loc[df["Amount"].idxmin()]
-        return f"Pengeluaran terbesar Anda adalah {abs(max_row['Amount']):,.0f} untuk {max_row['Category']} pada {max_row['Date']}."
-    return "Maaf, saya belum memahami pertanyaan Anda sepenuhnya."
+# ================= IC50 / EC50 / LC50 =================
+if menu == "IC50 / EC50 / LC50":
+    st.subheader("📊 Analisis IC50 / EC50 / LC50")
 
-# Dashboard Page
-if page == "Dashboard":
-    st.title("📊 Personal Finance Dashboard")
-    if st.session_state.data is None:
-        st.info("Please upload your transaction data first on the 'Upload Data' page.")
-    else:
-        df = st.session_state.data
-        total_income = df[df["Amount"] > 0]["Amount"].sum()
-        total_expense = df[df["Amount"] < 0]["Amount"].sum()
-        net_balance = total_income + total_expense
+    file = st.file_uploader("Upload file CSV", type=["csv"])
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Income", f"Rp {total_income:,.0f}")
-        col2.metric("Total Expense", f"Rp {abs(total_expense):,.0f}")
-        col3.metric("Net Balance", f"Rp {net_balance:,.0f}")
+    if file:
+        df = pd.read_csv(file)
+        st.dataframe(df)
 
-        st.subheader("📈 Monthly Expenses")
-        df["Month"] = pd.to_datetime(df["Date"]).dt.to_period("M").astype(str)
-        monthly = df[df["Amount"] < 0].groupby("Month")["Amount"].sum().reset_index()
-        fig = px.bar(monthly, x="Month", y="Amount", title="Monthly Expenses", labels={'Amount':'Total Expense'})
-        st.plotly_chart(fig, use_container_width=True)
+        x = df.iloc[:, 0].values
+        y = df.iloc[:, 1].values
 
-        st.subheader("📊 Expense by Category")
-        category = df[df["Amount"] < 0].groupby("Category")["Amount"].sum().reset_index()
-        fig2 = px.bar(category, x="Category", y="Amount", title="Expenses by Category", labels={'Amount':'Total Expense'})
-        st.plotly_chart(fig2, use_container_width=True)
+        target = 50
 
+        ic50 = np.interp(target, y, x)
 
-# Upload Page
-elif page == "Upload Data":
-    st.title("📁 Upload Your Financial Transactions")
-    st.markdown("Format file: CSV dengan kolom `Date`, `Amount`, `Category`")
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-    if uploaded_file:
-        try:
-            df = pd.read_csv(uploaded_file)
-            df["Date"] = pd.to_datetime(df["Date"])
-            st.dataframe(df.head())
-            st.session_state.data = df
-            st.success("Data uploaded successfully!")
-        except Exception as e:
-            st.error(f"Error loading data: {e}")
+        st.success(f"🎯 Nilai IC50 / EC50 / LC50 = **{ic50:.2f}**")
 
-# Chatbot Page
-elif page == "Finance Chatbot":
-    st.title("💬 Ask Our Finance Bot")
-    st.chat_message("assistant").write("Hi! Saya adalah FinanceBot. Tanyakan apapun seputar keuangan Anda!")
-    if prompt := st.chat_input("Tulis pertanyaan Anda..."):
-        st.chat_message("user").write(prompt)
-        response = finance_bot(prompt, st.session_state.data)
-        st.chat_message("assistant").write(response)
+        fig, ax = plt.subplots()
+        ax.plot(x, y, marker='o')
+        ax.axhline(50, linestyle='--')
+        ax.axvline(ic50, linestyle='--')
+        ax.set_xlabel("Konsentrasi")
+        ax.set_ylabel("Respon (%)")
+        ax.set_title("Kurva Bioassay")
 
+        st.pyplot(fig)
+
+        if ic50 < 50:
+            st.info("🔬 Aktivitas **SANGAT KUAT**")
+        elif ic50 < 100:
+            st.info("🔬 Aktivitas **KUAT**")
+        else:
+            st.info("🔬 Aktivitas **LEMAH**")
+
+# ================= TPC =================
+if menu == "Total Phenolic Content":
+    st.subheader("🌿 Total Phenolic Content (TPC)")
+
+    file = st.file_uploader("Upload data kurva standar (CSV)", type=["csv"])
+
+    if file:
+        df = pd.read_csv(file)
+        st.dataframe(df)
+
+        x = df.iloc[:, 0].values
+        y = df.iloc[:, 1].values
+
+        coef = np.polyfit(x, y, 1)
+        a, b = coef
+
+        st.write(f"📈 Persamaan regresi: **y = {a:.4f}x + {b:.4f}**")
+
+        Abs_sample = st.number_input("Absorbansi Sampel", value=0.500)
+        V = st.number_input("Volume ekstrak (mL)", value=10.0)
+        m = st.number_input("Berat sampel (g)", value=0.1)
+
+        C = (Abs_sample - b) / a
+        TPC = (C * V) / m
+
+        st.success(f"🌿 TPC = **{TPC:.2f} mg GAE/g sampel**")
+
+        fig, ax = plt.subplots()
+        ax.scatter(x, y)
+        ax.plot(x, a*x + b)
+        ax.set_xlabel("Konsentrasi (ppm)")
+        ax.set_ylabel("Absorbansi")
+        ax.set_title("Kurva Standar Asam Galat")
+
+        st.pyplot(fig)
