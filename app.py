@@ -2,123 +2,95 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-from sklearn.metrics import r2_score
 
-st.set_page_config(page_title="Advanced Bioassay Analyzer", layout="wide")
+st.set_page_config(page_title="Bioassay Analyzer", layout="centered")
 
-st.title("🧪 Advanced Bioassay & Phenolic Analyzer")
-st.write("IC50 | EC50 | LC50 (4PL) + Total Phenolic Content")
+st.title("🧪 Bioassay Data Analyzer")
+st.caption("IC50 | EC50 | LC50 | Total Phenolic Content")
 
 menu = st.sidebar.selectbox(
-    "Pilih Analisis",
-    ["IC50 / EC50 / LC50 (4PL)", "Total Phenolic Content (TPC)"]
+    "Pilih Jenis Analisis",
+    ["IC50 / EC50 / LC50", "Total Phenolic Content"]
 )
 
-# =========================
-# 4PL FUNCTION
-# =========================
-def four_pl(x, a, b, c, d):
-    return d + (a - d) / (1 + (x / c)**b)
-
-# =========================
+# =====================================================
 # IC50 / EC50 / LC50
-# =========================
-if menu == "IC50 / EC50 / LC50 (4PL)":
-    st.subheader("📊 IC50 / EC50 / LC50 – Model Logistik 4 Parameter")
+# =====================================================
+if menu == "IC50 / EC50 / LC50":
+    st.subheader("📊 Analisis IC50 / EC50 / LC50")
 
-    file = st.file_uploader("Upload data bioassay (CSV)", type=["csv"])
+    file = st.file_uploader("Upload file CSV", type=["csv"])
 
     if file:
         df = pd.read_csv(file)
+        st.write("📁 Data yang diunggah")
         st.dataframe(df)
 
-        x = df["Concentration"].values
-        y = df["Response"].values
+        x = df.iloc[:, 0].values  # Konsentrasi
+        y = df.iloc[:, 1].values  # Respon (%)
 
-        log_x = np.log10(x)
+        target = 50
+        ic50 = np.interp(target, y, x)
 
-        p0 = [min(y), 1, np.median(x), max(y)]
+        st.success(f"🎯 Nilai IC50 / EC50 / LC50 = **{ic50:.2f}**")
 
-        params, _ = curve_fit(four_pl, x, y, p0=p0, maxfev=10000)
-        a, b, c, d = params
-
-        y_pred = four_pl(x, *params)
-        r2 = r2_score(y, y_pred)
-
-        st.success(f"🎯 IC50 / EC50 / LC50 = **{c:.3f}**")
-        st.write(f"📈 R² = **{r2:.4f}**")
-
-        st.markdown("### 🔍 Parameter Model")
-        st.write(f"- a (min response) = {a:.2f}")
-        st.write(f"- b (Hill slope) = {b:.2f}")
-        st.write(f"- c (IC50/EC50/LC50) = {c:.3f}")
-        st.write(f"- d (max response) = {d:.2f}")
-
+        # ===== Grafik =====
         fig, ax = plt.subplots()
-        x_fit = np.logspace(np.log10(min(x)), np.log10(max(x)), 100)
-        y_fit = four_pl(x_fit, *params)
-
-        ax.scatter(x, y, label="Data Eksperimen")
-        ax.plot(x_fit, y_fit, label="Kurva 4PL")
-        ax.axhline(50, linestyle="--")
-        ax.axvline(c, linestyle="--")
-
-        ax.set_xscale("log")
-        ax.set_xlabel("Konsentrasi (log)")
+        ax.plot(x, y, 'o-', label="Data Eksperimen")
+        ax.axhline(50, linestyle='--', label="50% Respon")
+        ax.axvline(ic50, linestyle='--', label=f"IC50 = {ic50:.2f}")
+        ax.set_xlabel("Konsentrasi")
         ax.set_ylabel("Respon (%)")
-        ax.set_title("Kurva IC50 / EC50 / LC50 (4PL)")
+        ax.set_title("Kurva IC50 / EC50 / LC50")
         ax.legend()
 
         st.pyplot(fig)
 
-        if c < 50:
+        # ===== Interpretasi =====
+        if ic50 < 50:
             st.info("🔬 Aktivitas **SANGAT KUAT**")
-        elif c < 100:
+        elif ic50 < 100:
             st.info("🔬 Aktivitas **KUAT**")
         else:
             st.info("🔬 Aktivitas **LEMAH**")
 
-# =========================
-# TPC
-# =========================
-if menu == "Total Phenolic Content (TPC)":
-    st.subheader("🌿 Total Phenolic Content (Metode Folin–Ciocalteu)")
+# =====================================================
+# TOTAL PHENOLIC CONTENT
+# =====================================================
+if menu == "Total Phenolic Content":
+    st.subheader("🌿 Total Phenolic Content (TPC)")
 
-    file = st.file_uploader("Upload kurva standar asam galat (CSV)", type=["csv"])
+    file = st.file_uploader("Upload data kurva standar (CSV)", type=["csv"])
 
     if file:
         df = pd.read_csv(file)
+        st.write("📁 Data Kurva Standar")
         st.dataframe(df)
 
-        x = df["Concentration"].values
-        y = df["Absorbance"].values
+        x = df.iloc[:, 0].values  # Konsentrasi standar
+        y = df.iloc[:, 1].values  # Absorbansi
 
-        coef = np.polyfit(x, y, 1)
-        a, b = coef
+        # Regresi linier
+        a, b = np.polyfit(x, y, 1)
 
-        y_pred = a*x + b
-        r2 = r2_score(y, y_pred)
-
-        st.write(f"📈 Persamaan: **y = {a:.5f}x + {b:.5f}**")
-        st.write(f"📊 R² = **{r2:.4f}**")
+        st.write(f"📐 Persamaan regresi: **y = {a:.4f}x + {b:.4f}**")
 
         Abs_sample = st.number_input("Absorbansi Sampel", value=0.500)
         V = st.number_input("Volume ekstrak (mL)", value=10.0)
-        DF = st.number_input("Faktor pengenceran", value=1.0)
         m = st.number_input("Berat sampel (g)", value=0.1)
 
         C = (Abs_sample - b) / a
-        TPC = (C * V * DF) / m
+        TPC = (C * V) / m
 
         st.success(f"🌿 TPC = **{TPC:.2f} mg GAE/g sampel**")
 
+        # ===== Grafik =====
         fig, ax = plt.subplots()
         ax.scatter(x, y, label="Data Standar")
-        ax.plot(x, y_pred, label="Regresi Linier")
+        ax.plot(x, a * x + b, label="Regresi Linier")
         ax.set_xlabel("Konsentrasi Asam Galat (ppm)")
         ax.set_ylabel("Absorbansi")
-        ax.set_title("Kurva Standar Asam Galat")
+        ax.set_title("Kurva Standar Total Fenolik")
         ax.legend()
 
         st.pyplot(fig)
