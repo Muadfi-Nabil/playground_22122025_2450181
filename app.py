@@ -1,99 +1,124 @@
-# app.py
-# Web App Streamlit: Sistem Pengolah Data IC50, LC50, EC50, dan Total Phenolic Content (TPC)
-# Input DATA MANUAL (tanpa upload file)
-
 import streamlit as st
+import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+from sklearn.metrics import r2_score
 
+st.set_page_config(page_title="Advanced Bioassay Analyzer", layout="wide")
 
-
-st.set_page_config(page_title="Pengolah Data Bioaktivitas", layout="wide")
-
-st.title("🧪 Sistem Pengolah Data IC₅₀, LC₅₀, EC₅₀ & Total Phenolic Content (Input Manual)")
+st.title("🧪 Advanced Bioassay & Phenolic Analyzer")
+st.write("IC50 | EC50 | LC50 (4PL) + Total Phenolic Content")
 
 menu = st.sidebar.selectbox(
-    "Pilih Jenis Analisis",
-    ["IC50 / LC50 / EC50", "Total Phenolic Content (TPC)"]
+    "Pilih Analisis",
+    ["IC50 / EC50 / LC50 (4PL)", "Total Phenolic Content (TPC)"]
 )
 
-# ==========================
-# FUNGSI
-# ==========================
+# =========================
+# 4PL FUNCTION
+# =========================
+def four_pl(x, a, b, c, d):
+    return d + (a - d) / (1 + (x / c)**b)
 
-def hitung_x50(x, y):
-    x = np.array(x, dtype=float)
-    y = np.array(y, dtype=float)
+# =========================
+# IC50 / EC50 / LC50
+# =========================
+if menu == "IC50 / EC50 / LC50 (4PL)":
+    st.subheader("📊 IC50 / EC50 / LC50 – Model Logistik 4 Parameter")
 
-    # regresi linier manual (metode kuadrat terkecil)
-    n = len(x)
-    sum_x = np.sum(x)
-    sum_y = np.sum(y)
-    sum_xy = np.sum(x * y)
-    sum_x2 = np.sum(x ** 2)
+    file = st.file_uploader("Upload data bioassay (CSV)", type=["csv"])
 
-    a = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
-    b = (sum_y - a * sum_x) / n
+    if file:
+        df = pd.read_csv(file)
+        st.dataframe(df)
 
-    x50 = (50 - b) / a
-    return x50, a, b
+        x = df["Concentration"].values
+        y = df["Response"].values
 
-# ==========================
-# IC50 / LC50 / EC50
-# ==========================
-if menu == "IC50 / LC50 / EC50":
-    st.header("📊 Perhitungan IC₅₀ / LC₅₀ / EC₅₀ (Input Manual)")
+        log_x = np.log10(x)
 
-    st.markdown("Masukkan **konsentrasi** dan **% efek** (inhibisi / mortalitas / respon)")
+        p0 = [min(y), 1, np.median(x), max(y)]
 
-    n = st.number_input("Jumlah titik data", min_value=3, value=5)
+        params, _ = curve_fit(four_pl, x, y, p0=p0, maxfev=10000)
+        a, b, c, d = params
 
-    konsentrasi = []
-    efek = []
+        y_pred = four_pl(x, *params)
+        r2 = r2_score(y, y_pred)
 
-    for i in range(int(n)):
-        col1, col2 = st.columns(2)
-        with col1:
-            konsentrasi.append(st.number_input(f"Konsentrasi ke-{i+1}", key=f"x{i}"))
-        with col2:
-            efek.append(st.number_input(f"% Efek ke-{i+1}", key=f"y{i}"))
+        st.success(f"🎯 IC50 / EC50 / LC50 = **{c:.3f}**")
+        st.write(f"📈 R² = **{r2:.4f}**")
 
-    if st.button("Hitung X50"):
-        x50, a, b = hitung_x50(konsentrasi, efek)
-        st.subheader("Hasil")
-        st.write(f"Persamaan regresi: y = {a:.4f}x + {b:.4f}")
-        st.success(f"Nilai IC₅₀ / LC₅₀ / EC₅₀ = {x50:.4f}")
+        st.markdown("### 🔍 Parameter Model")
+        st.write(f"- a (min response) = {a:.2f}")
+        st.write(f"- b (Hill slope) = {b:.2f}")
+        st.write(f"- c (IC50/EC50/LC50) = {c:.3f}")
+        st.write(f"- d (max response) = {d:.2f}")
 
-# ==========================
-# TOTAL PHENOLIC CONTENT
-# ==========================
+        fig, ax = plt.subplots()
+        x_fit = np.logspace(np.log10(min(x)), np.log10(max(x)), 100)
+        y_fit = four_pl(x_fit, *params)
+
+        ax.scatter(x, y, label="Data Eksperimen")
+        ax.plot(x_fit, y_fit, label="Kurva 4PL")
+        ax.axhline(50, linestyle="--")
+        ax.axvline(c, linestyle="--")
+
+        ax.set_xscale("log")
+        ax.set_xlabel("Konsentrasi (log)")
+        ax.set_ylabel("Respon (%)")
+        ax.set_title("Kurva IC50 / EC50 / LC50 (4PL)")
+        ax.legend()
+
+        st.pyplot(fig)
+
+        if c < 50:
+            st.info("🔬 Aktivitas **SANGAT KUAT**")
+        elif c < 100:
+            st.info("🔬 Aktivitas **KUAT**")
+        else:
+            st.info("🔬 Aktivitas **LEMAH**")
+
+# =========================
+# TPC
+# =========================
 if menu == "Total Phenolic Content (TPC)":
-    st.header("🧫 Perhitungan Total Phenolic Content (TPC) – Input Manual")
+    st.subheader("🌿 Total Phenolic Content (Metode Folin–Ciocalteu)")
 
-    st.markdown("Masukkan data **kurva standar asam galat**")
+    file = st.file_uploader("Upload kurva standar asam galat (CSV)", type=["csv"])
 
-    n_std = st.number_input("Jumlah titik standar", min_value=3, value=5)
+    if file:
+        df = pd.read_csv(file)
+        st.dataframe(df)
 
-    kons_std = []
-    abs_std = []
+        x = df["Concentration"].values
+        y = df["Absorbance"].values
 
-    for i in range(int(n_std)):
-        col1, col2 = st.columns(2)
-        with col1:
-            kons_std.append(st.number_input(f"Konsentrasi standar ke-{i+1}", key=f"xs{i}"))
-        with col2:
-            abs_std.append(st.number_input(f"Absorbansi ke-{i+1}", key=f"ys{i}"))
+        coef = np.polyfit(x, y, 1)
+        a, b = coef
 
-    slope, intercept, r, p, se = linregress(kons_std, abs_std)
+        y_pred = a*x + b
+        r2 = r2_score(y, y_pred)
 
-    st.subheader("Persamaan Kurva Standar")
-    st.write(f"y = {slope:.4f}x + {intercept:.4f}")
-    st.write(f"R² = {r**2:.4f}")
+        st.write(f"📈 Persamaan: **y = {a:.5f}x + {b:.5f}**")
+        st.write(f"📊 R² = **{r2:.4f}**")
 
-    st.subheader("Data Sampel")
-    abs_sample = st.number_input("Absorbansi Sampel")
-    dilution = st.number_input("Faktor Pengenceran", value=1.0)
+        Abs_sample = st.number_input("Absorbansi Sampel", value=0.500)
+        V = st.number_input("Volume ekstrak (mL)", value=10.0)
+        DF = st.number_input("Faktor pengenceran", value=1.0)
+        m = st.number_input("Berat sampel (g)", value=0.1)
 
-    if st.button("Hitung TPC"):
-        konsen = (abs_sample - intercept) / slope
-        tpc = konsen * dilution
-        st.success(f"Total Phenolic Content = {tpc:.4f} mg GAE/g")
+        C = (Abs_sample - b) / a
+        TPC = (C * V * DF) / m
+
+        st.success(f"🌿 TPC = **{TPC:.2f} mg GAE/g sampel**")
+
+        fig, ax = plt.subplots()
+        ax.scatter(x, y, label="Data Standar")
+        ax.plot(x, y_pred, label="Regresi Linier")
+        ax.set_xlabel("Konsentrasi Asam Galat (ppm)")
+        ax.set_ylabel("Absorbansi")
+        ax.set_title("Kurva Standar Asam Galat")
+        ax.legend()
+
+        st.pyplot(fig)
