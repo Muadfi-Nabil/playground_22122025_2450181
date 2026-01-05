@@ -1,86 +1,144 @@
+# =============================================
+# FUTURISTIC IC50 / LC50 / EC50 ANALYSIS WEB APP
+# Streamlit-based Scientific Software
+# =============================================
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+import hashlib
 
-st.set_page_config(page_title="Bioassay Analyzer", layout="centered")
-
-st.title("🧪 Bioassay Data Analyzer")
-st.write("IC50 | EC50 | LC50 | Total Phenolic Content")
-
-menu = st.sidebar.selectbox(
-    "Pilih Analisis",
-    ["IC50 / EC50 / LC50", "Total Phenolic Content"]
+# -------------------------------
+# PAGE CONFIG
+# -------------------------------
+st.set_page_config(
+    page_title="BioAssay Analyzer",
+    page_icon="🧬",
+    layout="wide"
 )
 
-# ================= IC50 / EC50 / LC50 =================
-if menu == "IC50 / EC50 / LC50":
-    st.subheader("📊 Analisis IC50 / EC50 / LC50")
+# -------------------------------
+# SIMPLE AUTH SYSTEM
+# -------------------------------
+USERS = {
+    "admin": hashlib.sha256("admin123".encode()).hexdigest(),
+    "researcher": hashlib.sha256("lab456".encode()).hexdigest()
+}
 
-    file = st.file_uploader("Upload file CSV", type=["csv"])
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-    if file:
-        df = pd.read_csv(file)
-        st.dataframe(df)
 
-        x = df.iloc[:, 0].values
-        y = df.iloc[:, 1].values
+def login():
+    st.markdown("## 🔐 Login Sistem")
+    user = st.text_input("Username")
+    pwd = st.text_input("Password", type="password")
 
-        target = 50
-
-        ic50 = np.interp(target, y, x)
-
-        st.success(f"🎯 Nilai IC50 / EC50 / LC50 = **{ic50:.2f}**")
-
-        fig, ax = plt.subplots()
-        ax.plot(x, y, marker='o')
-        ax.axhline(50, linestyle='--')
-        ax.axvline(ic50, linestyle='--')
-        ax.set_xlabel("Konsentrasi")
-        ax.set_ylabel("Respon (%)")
-        ax.set_title("Kurva Bioassay")
-
-        st.pyplot(fig)
-
-        if ic50 < 50:
-            st.info("🔬 Aktivitas **SANGAT KUAT**")
-        elif ic50 < 100:
-            st.info("🔬 Aktivitas **KUAT**")
+    if st.button("Login"):
+        if user in USERS and hashlib.sha256(pwd.encode()).hexdigest() == USERS[user]:
+            st.session_state.authenticated = True
+            st.success("Login berhasil")
         else:
-            st.info("🔬 Aktivitas **LEMAH**")
+            st.error("Username atau password salah")
 
-# ================= TPC =================
-if menu == "Total Phenolic Content":
-    st.subheader("🌿 Total Phenolic Content (TPC)")
 
-    file = st.file_uploader("Upload data kurva standar (CSV)", type=["csv"])
+if not st.session_state.authenticated:
+    login()
+    st.stop()
 
-    if file:
-        df = pd.read_csv(file)
-        st.dataframe(df)
+# -------------------------------
+# HEADER UI
+# -------------------------------
+st.markdown(
+    """
+    <h1 style='text-align:center;color:#00FFD1;'>🧬 BioAssay Futuristic Analyzer</h1>
+    <p style='text-align:center;color:gray;'>IC50 • LC50 • EC50 Data Processing Software</p>
+    """,
+    unsafe_allow_html=True
+)
 
-        x = df.iloc[:, 0].values
-        y = df.iloc[:, 1].values
+# -------------------------------
+# SIDEBAR
+# -------------------------------
+with st.sidebar:
+    st.markdown("### ⚙️ Pengaturan Analisis")
+    assay_type = st.selectbox("Jenis Analisis", ["IC50", "LC50", "EC50"])
+    response_type = st.selectbox("Tipe Respon", ["% Inhibisi", "% Mortalitas", "% Efek"])
+    st.markdown("---")
+    st.markdown("📈 Model: Regresi Linier")
 
-        coef = np.polyfit(x, y, 1)
-        a, b = coef
+# -------------------------------
+# DATA INPUT
+# -------------------------------
+st.markdown("## 📥 Input Data")
 
-        st.write(f"📈 Persamaan regresi: **y = {a:.4f}x + {b:.4f}**")
+uploaded = st.file_uploader("Upload data (CSV)", type=["csv"])
 
-        Abs_sample = st.number_input("Absorbansi Sampel", value=0.500)
-        V = st.number_input("Volume ekstrak (mL)", value=10.0)
-        m = st.number_input("Berat sampel (g)", value=0.1)
+if uploaded:
+    df = pd.read_csv(uploaded)
+else:
+    df = pd.DataFrame({
+        "Konsentrasi": [1, 5, 10, 25, 50, 100],
+        "Respon": [5, 12, 28, 55, 72, 90]
+    })
 
-        C = (Abs_sample - b) / a
-        TPC = (C * V) / m
+st.dataframe(df, use_container_width=True)
 
-        st.success(f"🌿 TPC = **{TPC:.2f} mg GAE/g sampel**")
+# -------------------------------
+# REGRESSION & CALCULATION
+# -------------------------------
+X = df[["Konsentrasi"]].values
+Y = df["Respon"].values
 
-        fig, ax = plt.subplots()
-        ax.scatter(x, y)
-        ax.plot(x, a*x + b)
-        ax.set_xlabel("Konsentrasi (ppm)")
-        ax.set_ylabel("Absorbansi")
-        ax.set_title("Kurva Standar Asam Galat")
+model = LinearRegression()
+model.fit(X, Y)
 
-        st.pyplot(fig)
+slope = model.coef_[0]
+intercept = model.intercept_
+r2 = model.score(X, Y)
+
+# IC50 / LC50 / EC50 calculation
+TARGET = 50
+value_50 = (TARGET - intercept) / slope
+
+# -------------------------------
+# RESULTS
+# -------------------------------
+st.markdown("## 📊 Hasil Analisis")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Slope", f"{slope:.4f}")
+col2.metric("Intercept", f"{intercept:.4f}")
+col3.metric("R²", f"{r2:.4f}")
+
+st.success(f"🎯 Nilai {assay_type} = {value_50:.3f}")
+
+# -------------------------------
+# PLOT
+# -------------------------------
+st.markdown("## 📈 Kurva Regresi")
+
+x_line = np.linspace(X.min(), X.max(), 100).reshape(-1, 1)
+y_line = model.predict(x_line)
+
+fig, ax = plt.subplots()
+ax.scatter(X, Y)
+ax.plot(x_line, y_line)
+ax.axhline(50)
+ax.axvline(value_50)
+ax.set_xlabel("Konsentrasi")
+ax.set_ylabel(response_type)
+ax.set_title(f"Kurva Regresi {assay_type}")
+
+st.pyplot(fig)
+
+# -------------------------------
+# FOOTER
+# -------------------------------
+st.markdown("---")
+st.markdown(
+    "<p style='text-align:center;color:gray;'>Developed for Scientific & Pharmaceutical Data Analysis</p>",
+    unsafe_allow_html=True
+)
