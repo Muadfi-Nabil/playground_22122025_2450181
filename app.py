@@ -28,6 +28,11 @@ st.markdown("""
     padding: 2.5rem;
     border-radius: 20px;
     box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+    color: #1f2937; /* 🔥 INI KUNCI */
+}
+label, .stNumberInput label, .stTextInput label {
+    color: #1f2937 !important;
+    font-weight: 500;
 }
 .logo {
     font-size: 72px;
