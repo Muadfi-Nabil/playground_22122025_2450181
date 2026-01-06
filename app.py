@@ -284,62 +284,6 @@ if menu == "TPC" and st.session_state.get("login", False):
             st.subheader("Kurva Standar TPC")
             st.altair_chart(line + scatter, use_container_width=True)
             
-# =====================================================
-# TPC (Total Phenolic Content)
-# =====================================================
-if menu == "TPC":
-    st.header("Total Phenolic Content (TPC)")
-    st.write("Menggunakan standar asam galat")
-
-    n = st.number_input("Jumlah titik standar", min_value=3, value=5)
-
-    x, y = [], []
-    for i in range(int(n)):
-        c1, c2 = st.columns(2)
-        x.append(c1.number_input(f"Konsentrasi Standar {i+1} (ppm)"))
-        y.append(c2.number_input(f"Absorbansi {i+1}"))
-
-    if st.button("Hitung TPC"):
-        # =========================
-        # REGRESI & KORELASI
-        # =========================
-        a, b = regresi_linier(x, y)
-        r, r2 = korelasi(x, y)
-
-        # =========================
-        # DATA GRAFIK
-        # =========================
-        df = pd.DataFrame({
-            "Konsentrasi (ppm)": x,
-            "Absorbansi": y
-        }).sort_values("Konsentrasi (ppm)")
-
-        x_reg = np.linspace(min(x), max(x), 100)
-        y_reg = a * x_reg + b
-
-        df_reg = pd.DataFrame({
-            "Konsentrasi (ppm)": x_reg,
-            "Regresi": y_reg
-        })
-
-        # =========================
-        # GRAFIK DATA
-        # =========================
-        st.subheader("Grafik Data Standar Asam Galat")
-        st.line_chart(df.set_index("Konsentrasi (ppm)"))
-
-        # =========================
-        # GRAFIK REGRESI
-        # =========================
-        st.subheader("Grafik Regresi Linier TPC")
-        st.line_chart(df_reg.set_index("Konsentrasi (ppm)"))
-
-        # =========================
-        # OUTPUT NUMERIK
-        # =========================
-        st.info(f"Persamaan regresi: y = {a:.4f}x + {b:.4f}")
-        st.info(f"Koefisien korelasi (r) = {r:.4f}")
-        st.info(f"Koefisien determinasi (R²) = {r2:.4f}")
 
 # =====================================================
 # RIWAYAT & LOGOUT
