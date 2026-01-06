@@ -173,15 +173,10 @@ if menu == "LC50 Probit":
 
         df = pd.DataFrame({
             "Log Konsentrasi": logk,
+            "% Mortalitas": persen,
             "Probit": prob
         })
-         st.line_chart(df.set_index("Log Konsentrasi"))
-
-        a,b = regresi_linier(logk, prob)
-        lc50 = 10 ** ((5 - b)/a)
-        st.success(f"LC₅₀ = {lc50:.4f}")
-        
-         st.table(df.round(4))
+        st.table(df.round(4))
 
         a,b = regresi_linier(logk, prob)
         r,r2 = korelasi(logk, prob)
@@ -199,7 +194,6 @@ if menu == "LC50 Probit":
             "Intercept":b,
             "r":r
         })
-
 # =====================================================
 # IC50 / EC50 + GRAFIK + REGRESI
 # =====================================================
