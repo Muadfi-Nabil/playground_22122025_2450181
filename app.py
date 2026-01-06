@@ -229,23 +229,61 @@ if menu == "IC50 / EC50":
         st.info(f"Kategori aktivitas: {klasifikasi_ic50(ic50)}")
 
 # =====================================================
-# TPC
+# TPC (Total Phenolic Content)
 # =====================================================
 if menu == "TPC":
     st.header("Total Phenolic Content (TPC)")
-    n = st.number_input("Jumlah standar", min_value=3, value=5)
+    st.write("Menggunakan standar asam galat")
 
-    xs,ys = [],[]
+    n = st.number_input("Jumlah titik standar", min_value=3, value=5)
+
+    x, y = [], []
     for i in range(int(n)):
-        c1,c2 = st.columns(2)
-        xs.append(c1.number_input(f"Konsentrasi {i+1}"))
-        ys.append(c2.number_input(f"Absorbansi {i+1}"))
+        c1, c2 = st.columns(2)
+        x.append(c1.number_input(f"Konsentrasi Standar {i+1} (ppm)"))
+        y.append(c2.number_input(f"Absorbansi {i+1}"))
 
-    if st.button("Buat Kurva"):
-        a,b = regresi_linier(xs,ys)
-        st.session_state.a = a
-        st.session_state.b = b
-        st.success(f"A = {a:.4f}C + {b:.4f}")
+    if st.button("Hitung TPC"):
+        # =========================
+        # REGRESI & KORELASI
+        # =========================
+        a, b = regresi_linier(x, y)
+        r, r2 = korelasi(x, y)
+
+        # =========================
+        # DATA GRAFIK
+        # =========================
+        df = pd.DataFrame({
+            "Konsentrasi (ppm)": x,
+            "Absorbansi": y
+        }).sort_values("Konsentrasi (ppm)")
+
+        x_reg = np.linspace(min(x), max(x), 100)
+        y_reg = a * x_reg + b
+
+        df_reg = pd.DataFrame({
+            "Konsentrasi (ppm)": x_reg,
+            "Regresi": y_reg
+        })
+
+        # =========================
+        # GRAFIK DATA
+        # =========================
+        st.subheader("Grafik Data Standar Asam Galat")
+        st.line_chart(df.set_index("Konsentrasi (ppm)"))
+
+        # =========================
+        # GRAFIK REGRESI
+        # =========================
+        st.subheader("Grafik Regresi Linier TPC")
+        st.line_chart(df_reg.set_index("Konsentrasi (ppm)"))
+
+        # =========================
+        # OUTPUT NUMERIK
+        # =========================
+        st.info(f"Persamaan regresi: y = {a:.4f}x + {b:.4f}")
+        st.info(f"Koefisien korelasi (r) = {r:.4f}")
+        st.info(f"Koefisien determinasi (R²) = {r2:.4f}")
 
 # =====================================================
 # RIWAYAT & LOGOUT
