@@ -173,10 +173,9 @@ if menu == "LC50 Probit":
 
         df = pd.DataFrame({
             "Log Konsentrasi": logk,
-            "% Mortalitas": persen,
             "Probit": prob
         })
-        st.table(df.round(4))
+         st.table(df.round(4))
 
         a,b = regresi_linier(logk, prob)
         r,r2 = korelasi(logk, prob)
