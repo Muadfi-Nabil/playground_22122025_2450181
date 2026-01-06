@@ -294,6 +294,12 @@ if menu == "TPC" and st.session_state.get("login", False):
 # =====================================================
 # RIWAYAT & LOGOUT
 # =====================================================
+if menu == "Riwayat":
+    if st.session_state.riwayat:
+        st.table(pd.DataFrame(st.session_state.riwayat))
+    else:
+        st.info("Belum ada data")
+
 if menu == "Logout":
     st.session_state.clear()
     st.success("Logout berhasil")
