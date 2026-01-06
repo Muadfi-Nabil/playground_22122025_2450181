@@ -176,7 +176,7 @@ if menu == "LC50 Probit":
         st.success(f"LC₅₀ = {lc50:.4f}")
 
 # =====================================================
-# IC50 / EC50 + GRAFIK + REGRESI
+# IC50 / EC50 (1 Grafik Data)
 # =====================================================
 if menu == "IC50 / EC50":
     st.header("IC₅₀ / EC₅₀")
@@ -189,28 +189,26 @@ if menu == "IC50 / EC50":
         y.append(c2.number_input(f"% Efek {i+1}", 0.0, 100.0))
 
     if st.button("Hitung IC50 / EC50"):
-        # =========================
-        # REGRESI & KORELASI
-        # =========================
+        # Perhitungan
         a, b = regresi_linier(x, y)
         r, r2 = korelasi(x, y)
         ic50 = (50 - b) / a
 
-        # =========================
-        # DATA GRAFIK
-        # =========================
+        # Grafik DATA SAJA
         df = pd.DataFrame({
             "Konsentrasi": x,
             "% Efek": y
         }).sort_values("Konsentrasi")
 
-        x_reg = np.linspace(min(x), max(x), 100)
-        y_reg = a * x_reg + b
+        st.subheader("Grafik Data IC₅₀ / EC₅₀")
+        st.line_chart(df.set_index("Konsentrasi"))
 
-        df_reg = pd.DataFrame({
-            "Konsentrasi": x_reg,
-            "Regresi": y_reg
-        })
+        # Output numerik
+        st.success(f"IC₅₀ / EC₅₀ = {ic50:.4f}")
+        st.info(f"Persamaan regresi: y = {a:.4f}x + {b:.4f}")
+        st.info(f"Koefisien korelasi (r) = {r:.4f}")
+        st.info(f"Koefisien determinasi (R²) = {r2:.4f}")
+        st.info(f"Kategori aktivitas: {klasifikasi_ic50(ic50)}")
 
         # =========================
         # GRAFIK
