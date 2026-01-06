@@ -176,7 +176,7 @@ if menu == "LC50 Probit":
             "% Mortalitas": persen,
             "Probit": prob
         })
-       st.dataframe(df.round(4), use_container_width=True)
+        st.dataframe(df.round(4), use_container_width=True)
 
         a,b = regresi_linier(logk, prob)
         r,r2 = korelasi(logk, prob)
