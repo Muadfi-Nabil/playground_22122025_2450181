@@ -176,34 +176,57 @@ if menu == "LC50 Probit":
         st.success(f"LC₅₀ = {lc50:.4f}")
 
 # =====================================================
-# IC50 / EC50 + GRAFIK
+# IC50 / EC50 + GRAFIK + REGRESI
 # =====================================================
 if menu == "IC50 / EC50":
     st.header("IC₅₀ / EC₅₀")
     n = st.number_input("Jumlah titik", min_value=3, value=5)
 
-    x,y = [],[]
+    x, y = [], []
     for i in range(int(n)):
-        c1,c2 = st.columns(2)
+        c1, c2 = st.columns(2)
         x.append(c1.number_input(f"Konsentrasi {i+1}"))
-        y.append(c2.number_input(f"% Efek {i+1}",0.0,100.0))
+        y.append(c2.number_input(f"% Efek {i+1}", 0.0, 100.0))
 
     if st.button("Hitung IC50 / EC50"):
-        a,b = regresi_linier(x,y)
-        ic50 = (50-b)/a
+        # =========================
+        # REGRESI & KORELASI
+        # =========================
+        a, b = regresi_linier(x, y)
+        r, r2 = korelasi(x, y)
+        ic50 = (50 - b) / a
 
-        df = pd.DataFrame({"Konsentrasi":x,"% Efek":y}).sort_values("Konsentrasi")
+        # =========================
+        # DATA GRAFIK
+        # =========================
+        df = pd.DataFrame({
+            "Konsentrasi": x,
+            "% Efek": y
+        }).sort_values("Konsentrasi")
+
         x_reg = np.linspace(min(x), max(x), 100)
-        y_reg = a*x_reg + b
+        y_reg = a * x_reg + b
 
-        df_reg = pd.DataFrame({"Konsentrasi":x_reg,"Regresi":y_reg})
+        df_reg = pd.DataFrame({
+            "Konsentrasi": x_reg,
+            "Regresi": y_reg
+        })
 
+        # =========================
+        # GRAFIK
+        # =========================
         st.subheader("Grafik IC₅₀ / EC₅₀")
         st.line_chart(df.set_index("Konsentrasi"))
         st.line_chart(df_reg.set_index("Konsentrasi"))
 
+        # =========================
+        # OUTPUT NUMERIK 
+        # =========================
         st.success(f"IC₅₀ / EC₅₀ = {ic50:.4f}")
-        st.info(f"Kategori: {klasifikasi_ic50(ic50)}")
+        st.info(f"Persamaan regresi: y = {a:.4f}x + {b:.4f}")
+        st.info(f"Koefisien korelasi (r) = {r:.4f}")
+        st.info(f"Koefisien determinasi (R²) = {r2:.4f}")
+        st.info(f"Kategori aktivitas: {klasifikasi_ic50(ic50)}")
 
 # =====================================================
 # TPC
