@@ -175,6 +175,12 @@ if menu == "LC50 Probit":
             "Log Konsentrasi": logk,
             "Probit": prob
         })
+         st.line_chart(df.set_index("Log Konsentrasi"))
+
+        a,b = regresi_linier(logk, prob)
+        lc50 = 10 ** ((5 - b)/a)
+        st.success(f"LC₅₀ = {lc50:.4f}")
+        
          st.table(df.round(4))
 
         a,b = regresi_linier(logk, prob)
