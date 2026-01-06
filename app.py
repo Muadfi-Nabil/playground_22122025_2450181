@@ -229,6 +229,62 @@ if menu == "IC50 / EC50":
         st.info(f"Kategori aktivitas: {klasifikasi_ic50(ic50)}")
 
 # =====================================================
+# TPC
+# =====================================================
+if menu == "TPC":
+    st.header("Total Phenolic Content (TPC)")
+    n = st.number_input("Jumlah standar", min_value=3, value=5)
+
+    xs,ys = [],[]
+    for i in range(int(n)):
+        c1,c2 = st.columns(2)
+        xs.append(c1.number_input(f"Konsentrasi {i+1}"))
+        ys.append(c2.number_input(f"Absorbansi {i+1}"))
+
+    if st.button("Persamaan Regresi"):
+        a,b = regresi_linier(xs,ys)
+        st.session_state.a = a
+        st.session_state.b = b
+        st.success(f"A = {a:.4f}C + {b:.4f}")
+
+    if "a" in st.session_state:
+        abs_s = st.number_input("Absorbansi sampel")
+        vol = st.number_input("Volume (mL)")
+        fp = st.number_input("Faktor pengenceran")
+        m = st.number_input("Massa (g)")
+
+        if st.button("Hitung TPC"):
+            c = ((abs_s-st.session_state.b)/st.session_state.a)/1000
+            tpc = (c*vol*fp)/m
+            st.success(f"TPC = {tpc:.4f} mg GAE/g")
+
+# =====================================================
+# KURVA REGRESI — TPC
+# =====================================================
+if menu == "TPC" and st.session_state.get("login", False):
+
+    if st.button("Tampilkan Kurva Standar TPC"):
+        if len(xs) > 1:
+
+            df_plot = pd.DataFrame({
+                "Konsentrasi": xs,
+                "Absorbansi": ys
+            })
+
+            line = alt.Chart(df_plot).mark_line().encode(
+                x="Konsentrasi",
+                y="Absorbansi"
+            )
+
+            scatter = alt.Chart(df_plot).mark_point(size=80).encode(
+                x="Konsentrasi",
+                y="Absorbansi"
+            )
+
+            st.subheader("Kurva Standar TPC")
+            st.altair_chart(line + scatter, use_container_width=True)
+            
+# =====================================================
 # TPC (Total Phenolic Content)
 # =====================================================
 if menu == "TPC":
